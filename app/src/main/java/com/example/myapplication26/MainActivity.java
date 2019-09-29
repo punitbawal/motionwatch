@@ -1,5 +1,6 @@
 package com.example.myapplication26;
 
+import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -8,70 +9,54 @@ import android.os.Bundle;
 import android.support.wearable.activity.WearableActivity;
 import android.widget.TextView;
 
-import java.io.DataOutputStream;
-import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import com.example.myapplication26.network.NetworkThread;
+import com.example.myapplication26.network.Server;
+
 import java.io.IOException;
 
 public class MainActivity extends WearableActivity implements SensorEventListener {
 
-    private TextView mTextView,mkissValView;
-    private SensorManager sensorManager;
-    public static int LAST_SENSOR;
+    private TextView mTextView, mKissValView;
+    private SensorManager mSensorManager;
+    public static int mLastSensor;
     public static int i =0;
-    public float current_position_x = 0;
-    public float prev_kiss = 0;
-    private Socket socket;
-
-    private static final int SERVERPORT = 80;
-    private static final String SERVER_IP = "129.107.80.18";
-
+    public float mCurrentPositionX = 0;
+    public float mPrevKiss = 0;
+    private static final String TAG = "MainActivity";
+    private SharedPreferences mSharedPreferences;
+    private Utils mUtils;
+    Server server;
+    NetworkThread networkThread;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mSharedPreferences = getApplicationContext().getSharedPreferences("actions", 0);
+        mUtils = new Utils();
 
-        mTextView = (TextView) findViewById(R.id.sensorVal);
-        mkissValView = (TextView) findViewById(R.id.kissVal);
-
+        SharedPreferences.Editor editor = mSharedPreferences.edit();
+        editor.putString(mUtils.SONG_KEY, "");
+        editor.putString(mUtils.VOLUME_KEY, "");
+        editor.putString(mUtils.PLAY_KEY, "pause");
+        mTextView = findViewById(R.id.sensorVal);
+        mKissValView = findViewById(R.id.kissVal);
+        networkThread = new NetworkThread();
         // Enables Always-on
         setAmbientEnabled();
 
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-
-        try {
-            InetAddress serverAddr = InetAddress.getByName(SERVER_IP);
-
-            socket = new Socket(serverAddr, SERVERPORT);
-            OutputStream opStream = socket.getOutputStream();
-            // create a data output stream from the output stream so we can send data through it
-            DataOutputStream dataOutputStream = new DataOutputStream(opStream);
-
-            dataOutputStream.writeUTF("Hello from the other side!");
-            dataOutputStream.flush(); // send the message
-            dataOutputStream.close(); // close the output stream when we're done.
-
-            System.out.println("Closing socket and terminating program.");
-            socket.close();
-
-        } catch (UnknownHostException e1) {
-            e1.printStackTrace();
-        } catch (IOException e1) {
-            e1.printStackTrace();
-        }
-
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        networkThread.run();
     }
+
 
     @Override
     protected void onResume() {
         super.onResume();
-        sensorManager.registerListener(this,
-                sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT),
+        mSensorManager.registerListener(this,
+                mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT),
                 SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this,
-                sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+        mSensorManager.registerListener(this,
+                mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                 SensorManager.SENSOR_DELAY_NORMAL);
     }
 
@@ -79,36 +64,39 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     protected void onPause() {
         // unregister listener
         super.onPause();
-        sensorManager.unregisterListener(this);
+        mSensorManager.unregisterListener(this);
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
-            if(event.values[0]<=20.0 && event.values[0] != prev_kiss) {
+            // code for play and pause
+            if(event.values[0] <= 175.0 ) {
                 i++;
-                System.out.println("KISS" + i);
-                mkissValView.setText("KISS" + i);
-            }
+                mKissValView.setText("kiss "+i);
+                if (mSharedPreferences.getString(mUtils.PLAY_KEY, "").equals("pause")) {
+                    networkThread.run();
+//                    mUtils.sendDataToServer(server, mSharedPreferences, this);
+                } else
+                    networkThread.run();
+//                    mUtils.sendDataToServer(server, mSharedPreferences, this);
+                }
         }
 
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            if(current_position_x<event.values[0] && Math.abs(current_position_x - event.values[0])>=2){
-                current_position_x = event.values[0];
+            if(mCurrentPositionX <event.values[0] && Math.abs(mCurrentPositionX - event.values[0])>=2){
+                mCurrentPositionX = event.values[0];
                 System.out.println("RIGHT");
                 mTextView.setText("RIGHT");
             }
-            if(current_position_x>event.values[0] && Math.abs(current_position_x - event.values[0])>=2){
-                current_position_x = event.values[0];
+            if(mCurrentPositionX >event.values[0] && Math.abs(mCurrentPositionX - event.values[0])>=2){
+                mCurrentPositionX = event.values[0];
                 System.out.println("LEFT");
                 mTextView.setText("LEFT");
             }
-
-
         }
-
-
     }
+
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {
@@ -118,5 +106,17 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     @Override
     public void onPointerCaptureChanged(boolean hasCapture) {
 
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            server.mSocket.close();
+            server.dataOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
