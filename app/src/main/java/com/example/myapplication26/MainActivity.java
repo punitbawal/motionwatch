@@ -10,7 +10,6 @@ import android.support.wearable.activity.WearableActivity;
 import android.widget.TextView;
 
 import com.example.myapplication26.network.NetworkThread;
-import com.example.myapplication26.network.Server;
 
 import java.io.IOException;
 
@@ -23,10 +22,13 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     public float mCurrentPositionX = 0;
     public float mPrevKiss = 0;
     private static final String TAG = "MainActivity";
+    public boolean closerFlag = false;
     private SharedPreferences mSharedPreferences;
     private Utils mUtils;
-    Server server;
     NetworkThread networkThread;
+    Thread thread;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,12 +42,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         editor.putString(mUtils.PLAY_KEY, "pause");
         mTextView = findViewById(R.id.sensorVal);
         mKissValView = findViewById(R.id.kissVal);
-        networkThread = new NetworkThread();
         // Enables Always-on
         setAmbientEnabled();
-
+        networkThread = new NetworkThread("start");
+        thread = new Thread(networkThread);
+        thread.start();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        networkThread.run();
     }
 
 
@@ -67,20 +69,18 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         mSensorManager.unregisterListener(this);
     }
 
+
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
             // code for play and pause
-            if(event.values[0] <= 175.0 ) {
-                i++;
-                mKissValView.setText("kiss "+i);
-                if (mSharedPreferences.getString(mUtils.PLAY_KEY, "").equals("pause")) {
-                    networkThread.run();
-//                    mUtils.sendDataToServer(server, mSharedPreferences, this);
-                } else
-                    networkThread.run();
-//                    mUtils.sendDataToServer(server, mSharedPreferences, this);
-                }
+            if (event.values[0] <= 50.0 && closerFlag==false) {
+                closerFlag = true;
+                networkThread.message = "change";
+            }
+            if(event.values[0] > 100.0){
+                closerFlag = false;
+            }
         }
 
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
@@ -113,8 +113,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     protected void onDestroy() {
         super.onDestroy();
         try {
-            server.mSocket.close();
-            server.dataOutputStream.close();
+            networkThread.mSocket.close();
+            networkThread.dataOutputStream.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

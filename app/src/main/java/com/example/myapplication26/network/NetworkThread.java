@@ -14,36 +14,38 @@ public class NetworkThread implements Runnable {
     private static final int SERVERPORT = 1234;
     private static final String SERVER_IP = "192.168.43.35";
     public DataOutputStream dataOutputStream;
-
-    public  NetworkThread() {
-        try {
+    public String message;
 
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public NetworkThread(String msg) {
+        this.message = msg;
     }
 
 
     @Override
     public void run() {
         try {
-            // create a data output stream from the output stream so we can send data through it
             InetAddress serverAddr = InetAddress.getByName(SERVER_IP);
             this.mSocket = new Socket(serverAddr, SERVERPORT);
             this.mOpStream = this.mSocket.getOutputStream();
             this.dataOutputStream = new DataOutputStream(mOpStream);
-            dataOutputStream.writeUTF("hi");
-            dataOutputStream.flush();
+
+            while (true) {
+                // create a data output stream from the output stream so we can send data through it
+                if (message != null) {
+                    this.dataOutputStream.writeUTF(message);
+                    this.dataOutputStream.flush();
+                    message = null;
+                }
+            }
         } catch (UnknownHostException e1) {
             e1.printStackTrace();
         } catch (IOException e1) {
             e1.printStackTrace();
         }
     }
-    public void sendData()
-    {
-        this.dataOutputStream.wr
-    }
-    }
+}
+
+
+
 
