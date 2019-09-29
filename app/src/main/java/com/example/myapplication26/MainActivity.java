@@ -32,10 +32,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private Utils mUtils;
     NetworkThread networkThread;
     Thread thread;
-    float [] history = new float[2];
-    String [] direction = {"NONE","NONE"};
-
-    StringBuilder builder = new StringBuilder();
+    public boolean closerFlag = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +45,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         editor.putString(mUtils.SONG_KEY, "");
         editor.putString(mUtils.VOLUME_KEY, "");
         editor.putString(mUtils.PLAY_KEY, "pause");
+
         mTextView = findViewById(R.id.sensorVal);
         mKissValView = findViewById(R.id.kissVal);
         // Enables Always-on
@@ -106,10 +104,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
             // code for play and pause
-            if (event.values[0] <= 175.0) {
+            if (event.values[0] <= 50.0 && !closerFlag) {
+                closerFlag = true;
                 networkThread.message = "change";
-                Log.e(TAG, "onSensorChanged: change" );
-
+            }
+            if(event.values[0] > 100.0){
+                closerFlag = false;
             }
         }
 
