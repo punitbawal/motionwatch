@@ -1,6 +1,5 @@
 package com.example.myapplication26;
 
-import android.content.Context;
 import android.content.SharedPreferences;
 
 public class Utils {
@@ -9,7 +8,7 @@ public class Utils {
     public String VOLUME_KEY = "volume";
     public String PLAY_KEY = "play";
 
- 
+
 
 
 

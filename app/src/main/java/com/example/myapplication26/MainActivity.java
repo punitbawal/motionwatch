@@ -7,11 +7,17 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.support.wearable.activity.WearableActivity;
+import android.util.Log;
+import android.view.KeyEvent;
+import android.view.View;
 import android.widget.TextView;
 
 import com.example.myapplication26.network.NetworkThread;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 
 public class MainActivity extends WearableActivity implements SensorEventListener {
 
@@ -26,7 +32,10 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private Utils mUtils;
     NetworkThread networkThread;
     Thread thread;
+    float [] history = new float[2];
+    String [] direction = {"NONE","NONE"};
 
+    StringBuilder builder = new StringBuilder();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,9 +56,26 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         thread = new Thread(networkThread);
         thread.start();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+
+
+
     }
 
 
+    @Override /* KeyEvent.Callback */
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_NAVIGATE_NEXT:
+                // Do something that advances a user View to the next item in an ordered list.
+                Log.e(TAG, "onKeyDown: right");
+                return true;
+            case KeyEvent.KEYCODE_NAVIGATE_PREVIOUS:
+                Log.e(TAG, "onKeyDown: left");
+                return true;
+        }
+        // If you did not handle it, let it be handled by the next possible element as deemed by the Activity.
+        return super.onKeyDown(keyCode, event);
+    }
     @Override
     protected void onResume() {
         super.onResume();
@@ -59,6 +85,13 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         mSensorManager.registerListener(this,
                 mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                 SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this,
+                mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY),
+                SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this,
+                mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
+                SensorManager.SENSOR_DELAY_NORMAL);
+
     }
 
     @Override
@@ -75,22 +108,29 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             // code for play and pause
             if (event.values[0] <= 175.0) {
                 networkThread.message = "change";
+                Log.e(TAG, "onSensorChanged: change" );
+
             }
         }
 
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            if(mCurrentPositionX <event.values[0] && Math.abs(mCurrentPositionX - event.values[0])>=2){
-                mCurrentPositionX = event.values[0];
-                System.out.println("RIGHT");
-                mTextView.setText("RIGHT");
+        if (event.sensor.getType() == Sensor.TYPE_GRAVITY){
+            if (event.values[0] > 3 && event.values[0] < 6){
+                networkThread.message = "next";
+                Log.e(TAG, "onSensorChanged: next" );
+
             }
-            if(mCurrentPositionX >event.values[0] && Math.abs(mCurrentPositionX - event.values[0])>=2){
-                mCurrentPositionX = event.values[0];
-                System.out.println("LEFT");
-                mTextView.setText("LEFT");
+            if (event.values[0] < -3 && event.values[0] > -6){
+                networkThread.message = "previous";
+                Log.e(TAG, "onSensorChanged: previous" );
             }
         }
+
+
     }
+
+
+
+
 
 
     @Override
