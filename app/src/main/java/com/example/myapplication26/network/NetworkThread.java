@@ -10,10 +10,10 @@ import java.net.UnknownHostException;
 public class NetworkThread implements Runnable {
 
     public Socket mSocket;
-    private OutputStream mOpStream;
+//    private OutputStream mOpStream;
     private static final int SERVERPORT = 1234;
     private static final String SERVER_IP = "192.168.43.35";
-    public DataOutputStream dataOutputStream;
+//    public DataOutputStream dataOutputStream;
     public String message;
 
 
@@ -27,14 +27,16 @@ public class NetworkThread implements Runnable {
         try {
             InetAddress serverAddr = InetAddress.getByName(SERVER_IP);
             this.mSocket = new Socket(serverAddr, SERVERPORT);
-            this.mOpStream = this.mSocket.getOutputStream();
-            this.dataOutputStream = new DataOutputStream(mOpStream);
+            OutputStream mOpStream;
+            mOpStream = this.mSocket.getOutputStream();
+            DataOutputStream dataOutputStream = new DataOutputStream(mOpStream);
+
+
 
             while (true) {
                 // create a data output stream from the output stream so we can send data through it
                 if (message != null) {
-                    this.dataOutputStream.writeUTF(message);
-                    this.dataOutputStream.flush();
+                    dataOutputStream.writeBytes(message);
                     message = null;
                 }
             }
